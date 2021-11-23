@@ -239,7 +239,7 @@ func main() { //nolint:gocognit
 		}
 	}()
 
-	time.Sleep(60 * time.Second)
+	select {}
 }
 
 type sampleWriter struct {
@@ -259,7 +259,12 @@ func (w *sampleWriter) WriteFrame(frame syncodec.Frame) {
 func rtpFormat(pkt *rtp.Packet, attributes interceptor.Attributes) string {
 	// TODO(mathis): Replace timestamp by attributes.GetTimestamp as soon as
 	// implemented in interceptors
-	return fmt.Sprintf("%v, %v, %v, %v, %v, %v, %v\n",
+
+	var twcc rtp.TransportCCExtension
+	ext := pkt.GetExtension(pkt.GetExtensionIDs()[0])
+	check(twcc.Unmarshal(ext))
+
+	return fmt.Sprintf("%v, %v, %v, %v, %v, %v, %v, %v\n",
 		time.Now().UnixMilli(),
 		pkt.PayloadType,
 		pkt.SSRC,
@@ -267,6 +272,7 @@ func rtpFormat(pkt *rtp.Packet, attributes interceptor.Attributes) string {
 		pkt.Timestamp,
 		pkt.Marker,
 		pkt.MarshalSize(),
+		twcc.TransportSequence,
 	)
 }
 
