@@ -1,0 +1,23 @@
+version: '3'
+services:
+  answer:
+    container_name: answer
+    build:
+      context: .
+      dockerfile: answer/Dockerfile
+    hostname: answer
+    restart: always   
+    ports:
+      - 50000:50000    
+    volumes:
+      - ./log:/log
+
+  offer:
+    container_name: offer
+    build:
+      context: .
+      dockerfile: offer/Dockerfile
+    hostname: offer
+    restart: always
+    volumes:
+      - ./log:/log
