@@ -27,9 +27,9 @@ func check(e error) {
 
 func getLogWriters() (rtp, rtcp io.WriteCloser) {
 	var err error
-	rtp, err = os.Create("/log/rtp_in.log")
+	rtp, err = os.Create("log/rtp_in.log")
 	check(err)
-	rtcp, err = os.Create("/log/rtcp_out.log")
+	rtcp, err = os.Create("log/rtcp_out.log")
 	check(err)
 	return
 }
@@ -71,7 +71,7 @@ func onTrack(trackRemote *webrtc.TrackRemote, rtpReceiver *webrtc.RTPReceiver) {
 }
 
 func main() { // nolint:gocognit
-	offerAddr := flag.String("offer-address", "offer:50000", "Address that the Offer HTTP server is hosted on.")
+	offerAddr := flag.String("offer-address", "localhost:50000", "Address that the Offer HTTP server is hosted on.")
 	answerAddr := flag.String("answer-address", ":60000", "Address that the Answer HTTP server is hosted on.")
 	flag.Parse()
 
@@ -111,6 +111,8 @@ func main() { // nolint:gocognit
 	interceptorRegistry := &interceptor.Registry{}
 	interceptorRegistry.Add(rtcpDumperInterceptor)
 	interceptorRegistry.Add(rtpDumperInterceptor)
+
+	check(webrtc.ConfigureTWCCSender(mediaEngine, interceptorRegistry))
 
 	// Create a new RTCPeerConnection
 	peerConnection, err := webrtc.NewAPI(
