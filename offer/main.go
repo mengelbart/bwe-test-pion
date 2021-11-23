@@ -15,6 +15,8 @@ import (
 
 	"github.com/mengelbart/syncodec"
 	"github.com/pion/interceptor"
+	"github.com/pion/interceptor/pkg/cc"
+	"github.com/pion/interceptor/pkg/gcc"
 	"github.com/pion/interceptor/pkg/packetdump"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
@@ -90,6 +92,11 @@ func main() { //nolint:gocognit
 	interceptorRegistry.Add(rtpDumperInterceptor)
 	interceptorRegistry.Add(rtcpDumperInterceptor)
 
+	bwe := gcc.NewSendSideBandwidthEstimator(150_000)
+	gcc, err := cc.NewControllerInterceptor(cc.SetBWE(func() cc.BandwidthEstimator { return bwe }))
+	check(err)
+	interceptorRegistry.Add(gcc)
+
 	check(webrtc.ConfigureTWCCHeaderExtensionSender(mediaEngine, interceptorRegistry))
 
 	// Create a new RTCPeerConnection
@@ -103,6 +110,11 @@ func main() { //nolint:gocognit
 			fmt.Printf("cannot close peerConnection: %v\n", cErr)
 		}
 	}()
+
+	trackLocalStaticSample, err := webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeVP8}, "video", "pion")
+	check(err)
+	rtpSender, err := peerConnection.AddTrack(trackLocalStaticSample)
+	check(err)
 
 	// When an ICE candidate is available send to the other Pion instance
 	// the other Pion instance will add this candidate by calling AddICECandidate
@@ -172,11 +184,6 @@ func main() { //nolint:gocognit
 		}
 	})
 
-	trackLocalStaticSample, err := webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeVP8}, "video", "pion")
-	check(err)
-	rtpSender, err := peerConnection.AddTrack(trackLocalStaticSample)
-	check(err)
-
 	// Create an offer to send to the other process
 	offer, err := peerConnection.CreateOffer(nil)
 	if err != nil {
@@ -194,7 +201,6 @@ func main() { //nolint:gocognit
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("sdp: \n%v\n", string(payload))
 	resp, err := http.Post(fmt.Sprintf("http://%s/sdp", *answerAddr), "application/json; charset=utf-8", bytes.NewReader(payload)) // nolint:noctx
 
 	check(err)
@@ -219,10 +225,19 @@ func main() { //nolint:gocognit
 	}
 	encoder, err := syncodec.NewStatisticalEncoder(
 		sw,
-		syncodec.WithInitialTargetBitrate(2_000_000),
+		syncodec.WithInitialTargetBitrate(150_000),
 	)
 	check(err)
 	go encoder.Start()
+
+	go func() {
+		ticker := time.NewTicker(500 * time.Millisecond)
+		for range ticker.C {
+			target := bwe.GetBandwidthEstimation()
+			fmt.Printf("new bwe := %v bps\n", target)
+			encoder.SetTargetBitrate(int(target))
+		}
+	}()
 
 	time.Sleep(60 * time.Second)
 }
