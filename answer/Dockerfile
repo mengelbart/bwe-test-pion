@@ -1,4 +1,4 @@
-FROM golang:1.17
+FROM golang:1.17 as builder
 
 WORKDIR /app
 
@@ -11,5 +11,14 @@ COPY answer/main.go ./
 
 RUN go build -o /answer
 
-CMD ["/answer"]
+
+FROM engelbart/endpoint:latest
+
+COPY answer/run.sh .
+
+RUN chmod +x run.sh
+
+COPY --from=builder /answer .
+
+ENTRYPOINT ["/run.sh"]
 

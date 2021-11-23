@@ -1,4 +1,4 @@
-FROM golang:1.17
+FROM golang:1.17 as builder
 
 WORKDIR /app
 
@@ -11,5 +11,14 @@ COPY offer/main.go ./
 
 RUN go build -o /offer
 
-CMD ["/offer"]
+
+FROM engelbart/endpoint:latest
+
+COPY offer/run.sh .
+
+RUN chmod +x run.sh
+
+COPY --from=builder /offer .
+
+ENTRYPOINT ["/run.sh"]
 
