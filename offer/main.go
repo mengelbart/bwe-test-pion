@@ -30,11 +30,13 @@ func check(e error) {
 	}
 }
 
-func getLogWriters() (rtp, rtcp io.Writer) {
+func getLogWriters() (rtp, rtcp, cc io.Writer) {
 	var err error
 	rtp, err = os.Create("log/rtp_out.log")
 	check(err)
 	rtcp, err = os.Create("log/rtcp_in.log")
+	check(err)
+	cc, err = os.Create("log/cc.log")
 	check(err)
 	return
 }
@@ -74,7 +76,7 @@ func main() { //nolint:gocognit
 	err := mediaEngine.RegisterDefaultCodecs()
 	check(err)
 
-	rtpWriter, rtcpWriter := getLogWriters()
+	rtpWriter, rtcpWriter, ccWriter := getLogWriters()
 
 	rtpDumperInterceptor, err := packetdump.NewSenderInterceptor(
 		packetdump.RTPFormatter(rtpFormat),
@@ -232,9 +234,10 @@ func main() { //nolint:gocognit
 
 	go func() {
 		ticker := time.NewTicker(500 * time.Millisecond)
-		for range ticker.C {
+		for now := range ticker.C {
 			target := bwe.GetBandwidthEstimation()
 			fmt.Printf("new bwe := %v bps\n", target)
+			fmt.Fprintf(ccWriter, "%v, %v\n", now.UnixMilli(), target)
 			encoder.SetTargetBitrate(int(target))
 		}
 	}()
