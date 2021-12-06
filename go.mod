@@ -26,9 +26,9 @@ require (
 	github.com/pion/turn/v2 v2.0.5 // indirect
 	github.com/pion/udp v0.1.1 // indirect
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
-	golang.org/x/net v0.0.0-20211020060615-d418f374d309 // indirect
+	golang.org/x/net v0.0.0-20211201190559-0a0e4e1bb54c // indirect
 	golang.org/x/sys v0.0.0-20211025201205-69cdffdb9359 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 )
 
-replace github.com/pion/interceptor v0.1.2 => github.com/pion/interceptor v0.1.3-0.20211123214415-39ece9db9d80
+replace github.com/pion/interceptor v0.1.2 => github.com/pion/interceptor v0.1.3-0.20211206165547-b3f69b9ca183
