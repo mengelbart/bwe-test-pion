@@ -233,7 +233,7 @@ func main() { //nolint:gocognit
 	go encoder.Start()
 
 	go func() {
-		ticker := time.NewTicker(500 * time.Millisecond)
+		ticker := time.NewTicker(100 * time.Millisecond)
 		for now := range ticker.C {
 			target := bwe.GetBandwidthEstimation()
 			fmt.Fprintf(ccWriter, "%v, %v\n", now.UnixMilli(), target)
