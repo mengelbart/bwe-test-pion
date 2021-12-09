@@ -7,6 +7,7 @@ require (
 	github.com/pion/interceptor v0.1.2
 	github.com/pion/rtcp v1.2.9
 	github.com/pion/rtp v1.7.4
+	github.com/pion/sdp/v2 v2.4.0
 	github.com/pion/webrtc/v3 v3.1.10
 )
 

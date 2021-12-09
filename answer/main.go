@@ -14,8 +14,10 @@ import (
 
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/packetdump"
+	"github.com/pion/interceptor/pkg/twcc"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
+	"github.com/pion/sdp/v2"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -113,6 +115,16 @@ func main() { // nolint:gocognit
 	interceptorRegistry.Add(rtpDumperInterceptor)
 
 	check(webrtc.ConfigureTWCCSender(mediaEngine, interceptorRegistry))
+
+	mediaEngine.RegisterFeedback(webrtc.RTCPFeedback{Type: webrtc.TypeRTCPFBTransportCC}, webrtc.RTPCodecTypeVideo)
+	check(mediaEngine.RegisterHeaderExtension(webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeVideo))
+
+	mediaEngine.RegisterFeedback(webrtc.RTCPFeedback{Type: webrtc.TypeRTCPFBTransportCC}, webrtc.RTPCodecTypeAudio)
+	check(mediaEngine.RegisterHeaderExtension(webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeAudio))
+
+	generator, err := twcc.NewSenderInterceptor(twcc.SendInterval(30 * time.Millisecond))
+	check(err)
+	interceptorRegistry.Add(generator)
 
 	// Create a new RTCPeerConnection
 	peerConnection, err := webrtc.NewAPI(
