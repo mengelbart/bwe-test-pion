@@ -32,4 +32,4 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 )
 
-replace github.com/pion/interceptor v0.1.2 => github.com/pion/interceptor v0.1.3-0.20211206165547-b3f69b9ca183
+replace github.com/pion/interceptor v0.1.2 => github.com/pion/interceptor v0.1.4-0.20211209204238-d925ea0df792

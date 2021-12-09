@@ -114,8 +114,6 @@ func main() { // nolint:gocognit
 	interceptorRegistry.Add(rtcpDumperInterceptor)
 	interceptorRegistry.Add(rtpDumperInterceptor)
 
-	check(webrtc.ConfigureTWCCSender(mediaEngine, interceptorRegistry))
-
 	mediaEngine.RegisterFeedback(webrtc.RTCPFeedback{Type: webrtc.TypeRTCPFBTransportCC}, webrtc.RTPCodecTypeVideo)
 	check(mediaEngine.RegisterHeaderExtension(webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeVideo))
 
