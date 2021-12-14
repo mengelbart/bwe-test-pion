@@ -39,8 +39,8 @@ github.com/pion/dtls/v2 v2.0.10/go.mod h1:00OxfeCRWHShcqT9jx8pKKmBWuTt0NCZoVPCaC
 github.com/pion/ice/v2 v2.1.14 h1:nD9GZs3MiR1/dPa5EiMRMe8hLBG3/qqCdx/hTS2g8VE=
 github.com/pion/ice/v2 v2.1.14/go.mod h1:ovgYHUmwYLlRvcCLI67PnQ5YGe+upXZbGgllBDG/ktU=
 github.com/pion/interceptor v0.1.0/go.mod h1:j5NIl3tJJPB3u8+Z2Xz8MZs/VV6rc+If9mXEKNuFmEM=
-github.com/pion/interceptor v0.1.4-0.20211209204238-d925ea0df792 h1:ljVN6RVruLX2GroaVjywD1kQ+S7PBKWOmdHru75iScA=
-github.com/pion/interceptor v0.1.4-0.20211209204238-d925ea0df792/go.mod h1:Lh3JSl/cbJ2wP8I3ccrjh1K/deRGRn3UlSPuOTiHb6U=
+github.com/pion/interceptor v0.1.5-0.20211214135850-b34057698025 h1:x7WzSyrxw61c6gD14BRosrdAzCITI4Rjox+XczH1XTk=
+github.com/pion/interceptor v0.1.5-0.20211214135850-b34057698025/go.mod h1:Lh3JSl/cbJ2wP8I3ccrjh1K/deRGRn3UlSPuOTiHb6U=
 github.com/pion/logging v0.2.2 h1:M9+AIj/+pxNsDfAT64+MAVgJO0rsyLnoJKCqf//DoeY=
 github.com/pion/logging v0.2.2/go.mod h1:k0/tDVsRCX2Mb2ZEmTqNa7CWsQPc+YYCB7Q+5pahoms=
 github.com/pion/mdns v0.0.5 h1:Q2oj/JB3NqfzY9xGZ1fPzZzK7sDSD8rZPOvcIQ10BCw=

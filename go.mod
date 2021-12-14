@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/mengelbart/syncodec v0.0.0-20211121123228-d94cb52b9e9e
-	github.com/pion/interceptor v0.1.2
+	github.com/pion/interceptor v0.1.4
 	github.com/pion/rtcp v1.2.9
 	github.com/pion/rtp v1.7.4
 	github.com/pion/sdp/v2 v2.4.0
@@ -32,4 +32,6 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 )
 
-replace github.com/pion/interceptor v0.1.2 => github.com/pion/interceptor v0.1.4-0.20211209204238-d925ea0df792
+replace github.com/pion/interceptor v0.1.4 => github.com/pion/interceptor v0.1.5-0.20211214135850-b34057698025
+
+//replace github.com/pion/interceptor v0.1.2 => ../../pion/interceptor

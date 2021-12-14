@@ -15,7 +15,6 @@ import (
 
 	"github.com/mengelbart/syncodec"
 	"github.com/pion/interceptor"
-	"github.com/pion/interceptor/pkg/cc"
 	"github.com/pion/interceptor/pkg/gcc"
 	"github.com/pion/interceptor/pkg/packetdump"
 	"github.com/pion/rtcp"
@@ -23,6 +22,8 @@ import (
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
 )
+
+const initialTargetBitrate = 800_000
 
 func check(e error) {
 	if e != nil {
@@ -94,10 +95,9 @@ func main() { //nolint:gocognit
 	interceptorRegistry.Add(rtpDumperInterceptor)
 	interceptorRegistry.Add(rtcpDumperInterceptor)
 
-	bwe := gcc.NewSendSideBandwidthEstimator(150_000)
-	gcc, err := cc.NewControllerInterceptor(cc.SetBWE(func() cc.BandwidthEstimator { return bwe }))
+	bwe, err := gcc.NewInterceptor(gcc.InitialBitrate(initialTargetBitrate))
 	check(err)
-	interceptorRegistry.Add(gcc)
+	interceptorRegistry.Add(bwe)
 
 	check(webrtc.ConfigureTWCCHeaderExtensionSender(mediaEngine, interceptorRegistry))
 
@@ -227,17 +227,32 @@ func main() { //nolint:gocognit
 	}
 	encoder, err := syncodec.NewStatisticalEncoder(
 		sw,
-		syncodec.WithInitialTargetBitrate(150_000),
+		syncodec.WithInitialTargetBitrate(initialTargetBitrate),
 	)
 	check(err)
 	go encoder.Start()
 
 	go func() {
-		ticker := time.NewTicker(50 * time.Millisecond)
+		ticker := time.NewTicker(20 * time.Millisecond)
 		for now := range ticker.C {
-			target := bwe.GetBandwidthEstimation()
-			fmt.Fprintf(ccWriter, "%v, %v\n", now.UnixMilli(), target)
-			encoder.SetTargetBitrate(int(target))
+			target, err := bwe.GetTargetBitrate("")
+			check(err)
+			stats, err := bwe.GetStats("")
+			check(err)
+			lossEstimate := 0
+			delayEstimate := 0
+			estimate := 0.0
+			thresh := 0.0
+			rtt := time.Duration(0)
+			if stats != nil {
+				lossEstimate = stats.LossBasedEstimate
+				delayEstimate = stats.Bitrate
+				estimate = stats.Estimate
+				thresh = stats.Threshold
+				rtt = stats.RTT
+			}
+			fmt.Fprintf(ccWriter, "%v, %v, %v, %v, %v, %v, %v\n", now.UnixMilli(), target, lossEstimate, delayEstimate, estimate, thresh, rtt.Milliseconds())
+			encoder.SetTargetBitrate(target)
 		}
 	}()
 
