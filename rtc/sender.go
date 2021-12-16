@@ -1,13 +1,13 @@
-package main
+package rtc
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -15,34 +15,14 @@ import (
 
 	"github.com/mengelbart/syncodec"
 	"github.com/pion/interceptor"
-	"github.com/pion/interceptor/pkg/gcc"
-	"github.com/pion/interceptor/pkg/packetdump"
-	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
+	"github.com/pion/interceptor/gcc/pkg/gcc"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
 )
 
 const initialTargetBitrate = 800_000
 
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
-func getLogWriters() (rtp, rtcp, cc io.Writer) {
-	var err error
-	rtp, err = os.Create("log/rtp_out.log")
-	check(err)
-	rtcp, err = os.Create("log/rtcp_in.log")
-	check(err)
-	cc, err = os.Create("log/cc.log")
-	check(err)
-	return
-}
-
-func signalCandidate(addr string, c *webrtc.ICECandidate) error {
+func senderSignalCandidate(addr string, c *webrtc.ICECandidate) error {
 	payload := []byte(c.ToJSON().Candidate)
 	resp, err := http.Post(fmt.Sprintf("http://%s/candidate", addr), "application/json; charset=utf-8", bytes.NewReader(payload)) //nolint:noctx
 	if err != nil {
@@ -56,11 +36,7 @@ func signalCandidate(addr string, c *webrtc.ICECandidate) error {
 	return nil
 }
 
-func main() { //nolint:gocognit
-	offerAddr := flag.String("offer-address", ":50000", "Address that the Offer HTTP server is hosted on.")
-	answerAddr := flag.String("answer-address", "localhost:60000", "Address that the Answer HTTP server is hosted on.")
-	flag.Parse()
-
+func StartSender(offerAddr, answerAddr string) error {
 	var candidatesMux sync.Mutex
 	pendingCandidates := make([]*webrtc.ICECandidate, 0)
 
@@ -75,38 +51,40 @@ func main() { //nolint:gocognit
 
 	mediaEngine := &webrtc.MediaEngine{}
 	err := mediaEngine.RegisterDefaultCodecs()
-	check(err)
+	if err != nil {
+		return err
+	}
 
-	rtpWriter, rtcpWriter, ccWriter := getLogWriters()
-
-	rtpDumperInterceptor, err := packetdump.NewSenderInterceptor(
-		packetdump.RTPFormatter(rtpFormat),
-		packetdump.RTPWriter(rtpWriter),
+	sw := &sampleWriter{}
+	encoder, err := syncodec.NewStatisticalEncoder(
+		sw,
+		syncodec.WithInitialTargetBitrate(initialTargetBitrate),
 	)
+	if err != nil {
+		return err
+	}
 
-	check(err)
-	rtcpDumperInterceptor, err := packetdump.NewReceiverInterceptor(
-		packetdump.RTCPFormatter(rtcpFormat),
-		packetdump.RTCPWriter(rtcpWriter),
-	)
-	check(err)
+	registry := interceptor.Registry{}
 
-	interceptorRegistry := &interceptor.Registry{}
-	interceptorRegistry.Add(rtpDumperInterceptor)
-	interceptorRegistry.Add(rtcpDumperInterceptor)
+	if err = registerRTPSenderDumper(&registry); err != nil {
+		return err
+	}
+	if err = registerGCC(&registry, gccLoopFactory(encoder)); err != nil {
+		return err
+	}
 
-	bwe, err := gcc.NewInterceptor(gcc.InitialBitrate(initialTargetBitrate))
-	check(err)
-	interceptorRegistry.Add(bwe)
-
-	check(webrtc.ConfigureTWCCHeaderExtensionSender(mediaEngine, interceptorRegistry))
+	if err = webrtc.ConfigureTWCCHeaderExtensionSender(mediaEngine, &registry); err != nil {
+		return err
+	}
 
 	// Create a new RTCPeerConnection
 	peerConnection, err := webrtc.NewAPI(
 		webrtc.WithMediaEngine(mediaEngine),
-		webrtc.WithInterceptorRegistry(interceptorRegistry),
+		webrtc.WithInterceptorRegistry(&registry),
 	).NewPeerConnection(config)
-	check(err)
+	if err != nil {
+		return err
+	}
 	defer func() {
 		if cErr := peerConnection.Close(); cErr != nil {
 			fmt.Printf("cannot close peerConnection: %v\n", cErr)
@@ -114,9 +92,15 @@ func main() { //nolint:gocognit
 	}()
 
 	trackLocalStaticSample, err := webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeVP8}, "video", "pion")
-	check(err)
+	if err != nil {
+		return err
+	}
 	rtpSender, err := peerConnection.AddTrack(trackLocalStaticSample)
-	check(err)
+	if err != nil {
+		return err
+	}
+
+	sw.setTrack(trackLocalStaticSample)
 
 	// When an ICE candidate is available send to the other Pion instance
 	// the other Pion instance will add this candidate by calling AddICECandidate
@@ -131,7 +115,7 @@ func main() { //nolint:gocognit
 		desc := peerConnection.RemoteDescription()
 		if desc == nil {
 			pendingCandidates = append(pendingCandidates, c)
-		} else if onICECandidateErr := signalCandidate(*answerAddr, c); onICECandidateErr != nil {
+		} else if onICECandidateErr := senderSignalCandidate(answerAddr, c); onICECandidateErr != nil {
 			panic(onICECandidateErr)
 		}
 	})
@@ -164,13 +148,13 @@ func main() { //nolint:gocognit
 		defer candidatesMux.Unlock()
 
 		for _, c := range pendingCandidates {
-			if onICECandidateErr := signalCandidate(*answerAddr, c); onICECandidateErr != nil {
+			if onICECandidateErr := senderSignalCandidate(answerAddr, c); onICECandidateErr != nil {
 				panic(onICECandidateErr)
 			}
 		}
 	})
 	// Start HTTP server that accepts requests from the answer process
-	go func() { panic(http.ListenAndServe(*offerAddr, nil)) }()
+	go func() { panic(http.ListenAndServe(offerAddr, nil)) }()
 
 	// Set the handler for Peer connection state
 	// This will notify you when the peer has connected/disconnected
@@ -189,24 +173,28 @@ func main() { //nolint:gocognit
 	// Create an offer to send to the other process
 	offer, err := peerConnection.CreateOffer(nil)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// Sets the LocalDescription, and starts our UDP listeners
 	// Note: this will start the gathering of ICE candidates
 	if err = peerConnection.SetLocalDescription(offer); err != nil {
-		panic(err)
+		return err
 	}
 
 	// Send our offer to the HTTP server listening in the other process
 	payload, err := json.Marshal(offer)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	resp, err := http.Post(fmt.Sprintf("http://%s/sdp", *answerAddr), "application/json; charset=utf-8", bytes.NewReader(payload)) // nolint:noctx
+	resp, err := http.Post(fmt.Sprintf("http://%s/sdp", answerAddr), "application/json; charset=utf-8", bytes.NewReader(payload)) // nolint:noctx
+	if err != nil {
+		return err
+	}
 
-	check(err)
-	check(resp.Body.Close())
+	if err = resp.Body.Close(); err != nil {
+		return err
+	}
 
 	go func() {
 		for {
@@ -222,45 +210,47 @@ func main() { //nolint:gocognit
 
 	}()
 
-	sw := &sampleWriter{
-		track: trackLocalStaticSample,
-	}
-	encoder, err := syncodec.NewStatisticalEncoder(
-		sw,
-		syncodec.WithInitialTargetBitrate(initialTargetBitrate),
-	)
-	check(err)
 	go encoder.Start()
 
-	go func() {
-		ticker := time.NewTicker(20 * time.Millisecond)
-		for now := range ticker.C {
-			target, err := bwe.GetTargetBitrate("")
-			check(err)
-			stats, err := bwe.GetStats("")
-			check(err)
-			lossEstimate := 0
-			delayEstimate := 0
-			estimate := 0.0
-			thresh := 0.0
-			rtt := time.Duration(0)
-			if stats != nil {
-				lossEstimate = stats.LossBasedEstimate
-				delayEstimate = stats.Bitrate
-				estimate = stats.Estimate
-				thresh = stats.Threshold
-				rtt = stats.RTT
-			}
-			fmt.Fprintf(ccWriter, "%v, %v, %v, %v, %v, %v, %v\n", now.UnixMilli(), target, lossEstimate, delayEstimate, estimate, thresh, rtt.Milliseconds())
-			encoder.SetTargetBitrate(target)
-		}
-	}()
+	//	go func() {
+	//		ticker := time.NewTicker(20 * time.Millisecond)
+	//		for now := range ticker.C {
+	//			target, err := bwe.GetTargetBitrate("")
+	//			if err != nil {
+	//				// TODO
+	//				panic(err)
+	//			}
+	//			stats, err := bwe.GetStats("")
+	//			if err != nil {
+	//				// TODO
+	//				panic(err)
+	//			}
+	//			lossEstimate := 0
+	//			delayEstimate := 0
+	//			estimate := 0.0
+	//			thresh := 0.0
+	//			rtt := time.Duration(0)
+	//			if stats != nil {
+	//				lossEstimate = stats.LossBasedEstimate
+	//				delayEstimate = stats.Bitrate
+	//				estimate = stats.Estimate
+	//				thresh = stats.Threshold
+	//				rtt = stats.RTT
+	//			}
+	//			fmt.Fprintf(ccWriter, "%v, %v, %v, %v, %v, %v, %v\n", now.UnixMilli(), target, lossEstimate, delayEstimate, estimate, thresh, rtt.Milliseconds())
+	//			encoder.SetTargetBitrate(target)
+	//		}
+	//	}()
 
 	select {}
 }
 
 type sampleWriter struct {
 	track *webrtc.TrackLocalStaticSample
+}
+
+func (w *sampleWriter) setTrack(track *webrtc.TrackLocalStaticSample) {
+	w.track = track
 }
 
 func (w *sampleWriter) WriteFrame(frame syncodec.Frame) {
@@ -273,35 +263,19 @@ func (w *sampleWriter) WriteFrame(frame syncodec.Frame) {
 	})
 }
 
-func rtpFormat(pkt *rtp.Packet, attributes interceptor.Attributes) string {
-	// TODO(mathis): Replace timestamp by attributes.GetTimestamp as soon as
-	// implemented in interceptors
-
-	var twcc rtp.TransportCCExtension
-	ext := pkt.GetExtension(pkt.GetExtensionIDs()[0])
-	check(twcc.Unmarshal(ext))
-
-	return fmt.Sprintf("%v, %v, %v, %v, %v, %v, %v, %v\n",
-		time.Now().UnixMilli(),
-		pkt.PayloadType,
-		pkt.SSRC,
-		pkt.SequenceNumber,
-		pkt.Timestamp,
-		pkt.Marker,
-		pkt.MarshalSize(),
-		twcc.TransportSequence,
-	)
-}
-
-func rtcpFormat(pkts []rtcp.Packet, _ interceptor.Attributes) string {
-	// TODO(mathis): Replace timestamp by attributes.GetTimestamp as soon as
-	// implemented in interceptors
-	res := fmt.Sprintf("%v\t", time.Now().UnixMilli())
-	for _, pkt := range pkts {
-		switch feedback := pkt.(type) {
-		case *rtcp.TransportLayerCC:
-			res += feedback.String()
-		}
+func gccLoopFactory(encoder *syncodec.StatisticalCodec) gcc.NewPeerConnectionCallback {
+	return func(_ string, bwe gcc.BandwidthEstimator) {
+		go func() {
+			ticker := time.NewTicker(200 * time.Millisecond)
+			for range ticker.C {
+				target := bwe.GetTargetBitrate()
+				if target < 0 {
+					log.Printf("got negative target bitrate: %v\n", target)
+					continue
+				}
+				encoder.SetTargetBitrate(target)
+				fmt.Printf("new bitrate: %v\n", target)
+			}
+		}()
 	}
-	return res
 }

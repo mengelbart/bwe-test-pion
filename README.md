@@ -15,27 +15,19 @@ The `answer` side acts like a HTTP server and should therefore be ran first.
 ## Run locally:
 
 ```shell
-go run answer/main.go
+go run main.go receive
 ```
 
 and then in a second shell:
 
 ```shell
-go run offer/main.go
+go run main.go send
 ```
 
 You should see bandwidth estimates (bwe) being updated and increasing.
 
 ## Run in docker:
 
-Simply run `docker-compose up` and you should see the same output.
-
-
-At some point you may see the bitrate reaching a maximum bitrate or some errors
-occur due to very high target bitrates. This happens, because there is no packet
-loss, which is currently the only way of detecting congestion.
-
 If you want to see the congestion controller in action with a simulated setup,
-look at the [bwe-test-runner](https://github.com/mengelbart/bwe-test-runner). In
-the future, there will also be a similar test runner using only go tests.
+look at the [bwe-test-runner](https://github.com/mengelbart/bwe-test-runner).
 

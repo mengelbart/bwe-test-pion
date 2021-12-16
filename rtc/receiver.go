@@ -1,9 +1,8 @@
-package main
+package rtc
 
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,30 +12,11 @@ import (
 	"time"
 
 	"github.com/pion/interceptor"
-	"github.com/pion/interceptor/pkg/packetdump"
-	"github.com/pion/interceptor/pkg/twcc"
-	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
 	"github.com/pion/sdp/v2"
 	"github.com/pion/webrtc/v3"
 )
 
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
-func getLogWriters() (rtp, rtcp io.WriteCloser) {
-	var err error
-	rtp, err = os.Create("log/rtp_in.log")
-	check(err)
-	rtcp, err = os.Create("log/rtcp_out.log")
-	check(err)
-	return
-}
-
-func signalCandidate(addr string, c *webrtc.ICECandidate) error {
+func receiverSignalCandidate(addr string, c *webrtc.ICECandidate) error {
 	payload := []byte(c.ToJSON().Candidate)
 	resp, err := http.Post(fmt.Sprintf("http://%s/candidate", addr), // nolint:noctx
 		"application/json; charset=utf-8", bytes.NewReader(payload))
@@ -72,14 +52,9 @@ func onTrack(trackRemote *webrtc.TrackRemote, rtpReceiver *webrtc.RTPReceiver) {
 	}
 }
 
-func main() { // nolint:gocognit
-	offerAddr := flag.String("offer-address", "localhost:50000", "Address that the Offer HTTP server is hosted on.")
-	answerAddr := flag.String("answer-address", ":60000", "Address that the Answer HTTP server is hosted on.")
-	flag.Parse()
-
+func StartReceiver(answerAddr, offerAddr string) error {
 	var candidatesMux sync.Mutex
 	pendingCandidates := make([]*webrtc.ICECandidate, 0)
-	// Everything below is the Pion WebRTC API! Thanks for using it ❤️.
 
 	// Prepare the configuration
 	config := webrtc.Configuration{
@@ -92,45 +67,36 @@ func main() { // nolint:gocognit
 
 	mediaEngine := &webrtc.MediaEngine{}
 	err := mediaEngine.RegisterDefaultCodecs()
-	check(err)
+	if err != nil {
+		return err
+	}
 
-	rtpWriter, rtcpWriter := getLogWriters()
-	defer rtpWriter.Close()
-	defer rtcpWriter.Close()
-
-	rtcpDumperInterceptor, err := packetdump.NewSenderInterceptor(
-		packetdump.RTCPFormatter(rtcpFormat),
-		packetdump.RTCPWriter(rtcpWriter),
-	)
-	check(err)
-
-	rtpDumperInterceptor, err := packetdump.NewReceiverInterceptor(
-		packetdump.RTPFormatter(rtpFormat),
-		packetdump.RTPWriter(rtpWriter),
-	)
-	check(err)
-
-	interceptorRegistry := &interceptor.Registry{}
-	interceptorRegistry.Add(rtcpDumperInterceptor)
-	interceptorRegistry.Add(rtpDumperInterceptor)
+	registry := &interceptor.Registry{}
 
 	mediaEngine.RegisterFeedback(webrtc.RTCPFeedback{Type: webrtc.TypeRTCPFBTransportCC}, webrtc.RTPCodecTypeVideo)
-	check(mediaEngine.RegisterHeaderExtension(webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeVideo))
+	if err = mediaEngine.RegisterHeaderExtension(webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeVideo); err != nil {
+		return err
+	}
 
 	mediaEngine.RegisterFeedback(webrtc.RTCPFeedback{Type: webrtc.TypeRTCPFBTransportCC}, webrtc.RTPCodecTypeAudio)
-	check(mediaEngine.RegisterHeaderExtension(webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeAudio))
+	if err = mediaEngine.RegisterHeaderExtension(webrtc.RTPHeaderExtensionCapability{URI: sdp.TransportCCURI}, webrtc.RTPCodecTypeAudio); err != nil {
+		return err
+	}
 
-	generator, err := twcc.NewSenderInterceptor(twcc.SendInterval(30 * time.Millisecond))
-	check(err)
-	interceptorRegistry.Add(generator)
+	if err = registerRTPReceiverDumper(registry); err != nil {
+		return err
+	}
+	if err = registerTWCC(registry); err != nil {
+		return err
+	}
 
 	// Create a new RTCPeerConnection
 	peerConnection, err := webrtc.NewAPI(
 		webrtc.WithMediaEngine(mediaEngine),
-		webrtc.WithInterceptorRegistry(interceptorRegistry),
+		webrtc.WithInterceptorRegistry(registry),
 	).NewPeerConnection(config)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer func() {
 		if cErr := peerConnection.Close(); err != nil {
@@ -151,7 +117,7 @@ func main() { // nolint:gocognit
 		desc := peerConnection.RemoteDescription()
 		if desc == nil {
 			pendingCandidates = append(pendingCandidates, c)
-		} else if onICECandidateErr := signalCandidate(*offerAddr, c); onICECandidateErr != nil {
+		} else if onICECandidateErr := receiverSignalCandidate(offerAddr, c); onICECandidateErr != nil {
 			panic(onICECandidateErr)
 		}
 	})
@@ -191,7 +157,7 @@ func main() { // nolint:gocognit
 		if hErr != nil {
 			panic(hErr)
 		}
-		resp, hErr := http.Post(fmt.Sprintf("http://%s/sdp", *offerAddr), "application/json; charset=utf-8", bytes.NewReader(payload)) // nolint:noctx
+		resp, hErr := http.Post(fmt.Sprintf("http://%s/sdp", offerAddr), "application/json; charset=utf-8", bytes.NewReader(payload)) // nolint:noctx
 		if hErr != nil {
 			panic(hErr)
 		} else if closeErr := resp.Body.Close(); closeErr != nil {
@@ -206,7 +172,7 @@ func main() { // nolint:gocognit
 
 		candidatesMux.Lock()
 		for _, c := range pendingCandidates {
-			onICECandidateErr := signalCandidate(*offerAddr, c)
+			onICECandidateErr := receiverSignalCandidate(offerAddr, c)
 			if onICECandidateErr != nil {
 				panic(onICECandidateErr)
 			}
@@ -231,38 +197,5 @@ func main() { // nolint:gocognit
 	peerConnection.OnTrack(onTrack)
 
 	// Start HTTP server that accepts requests from the offer process to exchange SDP and Candidates
-	panic(http.ListenAndServe(*answerAddr, nil))
-}
-
-func rtpFormat(pkt *rtp.Packet, attributes interceptor.Attributes) string {
-	// TODO(mathis): Replace timestamp by attributes.GetTimestamp as soon as
-	// implemented in interceptors
-
-	var twcc rtp.TransportCCExtension
-	ext := pkt.GetExtension(pkt.GetExtensionIDs()[0])
-	check(twcc.Unmarshal(ext))
-
-	return fmt.Sprintf("%v, %v, %v, %v, %v, %v, %v, %v\n",
-		time.Now().UnixMilli(),
-		pkt.PayloadType,
-		pkt.SSRC,
-		pkt.SequenceNumber,
-		pkt.Timestamp,
-		pkt.Marker,
-		pkt.MarshalSize(),
-		twcc.TransportSequence,
-	)
-}
-
-func rtcpFormat(pkts []rtcp.Packet, _ interceptor.Attributes) string {
-	// TODO(mathis): Replace timestamp by attributes.GetTimestamp as soon as
-	// implemented in interceptors
-	res := fmt.Sprintf("%v\t", time.Now().UnixMilli())
-	for _, pkt := range pkts {
-		switch feedback := pkt.(type) {
-		case *rtcp.TransportLayerCC:
-			res += feedback.String()
-		}
-	}
-	return res
+	panic(http.ListenAndServe(answerAddr, nil))
 }
