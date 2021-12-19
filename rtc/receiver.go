@@ -83,7 +83,17 @@ func StartReceiver(answerAddr, offerAddr string) error {
 		return err
 	}
 
-	if err = registerRTPReceiverDumper(registry); err != nil {
+	rtpWriter, err := getLogWriter("log/rtp_int.log")
+	if err != nil {
+		return err
+	}
+	defer rtpWriter.Close()
+	rtcpWriter, err := getLogWriter("log/rtcp_out.log")
+	if err != nil {
+		return err
+	}
+	defer rtcpWriter.Close()
+	if err = registerRTPReceiverDumper(registry, rtpWriter, rtcpWriter); err != nil {
 		return err
 	}
 	if err = registerTWCC(registry); err != nil {

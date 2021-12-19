@@ -9,10 +9,10 @@ import (
 	"github.com/pion/interceptor/pkg/twcc"
 )
 
-func registerRTPSenderDumper(r *interceptor.Registry) error {
+func registerRTPSenderDumper(r *interceptor.Registry, rtp, rtcp io.Writer) error {
 	rtpDumperInterceptor, err := packetdump.NewSenderInterceptor(
 		packetdump.RTPFormatter(rtpFormat),
-		packetdump.RTPWriter(io.Discard),
+		packetdump.RTPWriter(rtp),
 	)
 	if err != nil {
 		return err
@@ -20,7 +20,7 @@ func registerRTPSenderDumper(r *interceptor.Registry) error {
 
 	rtcpDumperInterceptor, err := packetdump.NewReceiverInterceptor(
 		packetdump.RTCPFormatter(rtcpFormat),
-		packetdump.RTCPWriter(io.Discard),
+		packetdump.RTCPWriter(rtcp),
 	)
 	if err != nil {
 		return err
@@ -30,10 +30,10 @@ func registerRTPSenderDumper(r *interceptor.Registry) error {
 	return nil
 }
 
-func registerRTPReceiverDumper(r *interceptor.Registry) error {
+func registerRTPReceiverDumper(r *interceptor.Registry, rtp, rtcp io.Writer) error {
 	rtcpDumperInterceptor, err := packetdump.NewSenderInterceptor(
 		packetdump.RTCPFormatter(rtcpFormat),
-		packetdump.RTCPWriter(io.Discard),
+		packetdump.RTCPWriter(rtp),
 	)
 	if err != nil {
 		return err
@@ -41,7 +41,7 @@ func registerRTPReceiverDumper(r *interceptor.Registry) error {
 
 	rtpDumperInterceptor, err := packetdump.NewReceiverInterceptor(
 		packetdump.RTPFormatter(rtpFormat),
-		packetdump.RTPWriter(io.Discard),
+		packetdump.RTPWriter(rtcp),
 	)
 	if err != nil {
 		return err

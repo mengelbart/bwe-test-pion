@@ -66,10 +66,25 @@ func StartSender(offerAddr, answerAddr string) error {
 
 	registry := interceptor.Registry{}
 
-	if err = registerRTPSenderDumper(&registry); err != nil {
+	rtpWriter, err := getLogWriter("log/rtp_out.log")
+	if err != nil {
 		return err
 	}
-	if err = registerGCC(&registry, gccLoopFactory(encoder)); err != nil {
+	defer rtpWriter.Close()
+	rtcpWriter, err := getLogWriter("log/rtcp_in.log")
+	if err != nil {
+		return err
+	}
+	defer rtcpWriter.Close()
+	if err = registerRTPSenderDumper(&registry, rtpWriter, rtcpWriter); err != nil {
+		return err
+	}
+	ccLogfile, err := getLogWriter("log/cc.log")
+	if err != nil {
+		return err
+	}
+	defer ccLogfile.Close()
+	if err = registerGCC(&registry, gccLoopFactory(encoder, ccLogfile)); err != nil {
 		return err
 	}
 
@@ -212,36 +227,6 @@ func StartSender(offerAddr, answerAddr string) error {
 
 	go encoder.Start()
 
-	//	go func() {
-	//		ticker := time.NewTicker(20 * time.Millisecond)
-	//		for now := range ticker.C {
-	//			target, err := bwe.GetTargetBitrate("")
-	//			if err != nil {
-	//				// TODO
-	//				panic(err)
-	//			}
-	//			stats, err := bwe.GetStats("")
-	//			if err != nil {
-	//				// TODO
-	//				panic(err)
-	//			}
-	//			lossEstimate := 0
-	//			delayEstimate := 0
-	//			estimate := 0.0
-	//			thresh := 0.0
-	//			rtt := time.Duration(0)
-	//			if stats != nil {
-	//				lossEstimate = stats.LossBasedEstimate
-	//				delayEstimate = stats.Bitrate
-	//				estimate = stats.Estimate
-	//				thresh = stats.Threshold
-	//				rtt = stats.RTT
-	//			}
-	//			fmt.Fprintf(ccWriter, "%v, %v, %v, %v, %v, %v, %v\n", now.UnixMilli(), target, lossEstimate, delayEstimate, estimate, thresh, rtt.Milliseconds())
-	//			encoder.SetTargetBitrate(target)
-	//		}
-	//	}()
-
 	select {}
 }
 
@@ -263,18 +248,19 @@ func (w *sampleWriter) WriteFrame(frame syncodec.Frame) {
 	})
 }
 
-func gccLoopFactory(encoder *syncodec.StatisticalCodec) gcc.NewPeerConnectionCallback {
+func gccLoopFactory(encoder *syncodec.StatisticalCodec, logfile io.Writer) gcc.NewPeerConnectionCallback {
 	return func(_ string, bwe gcc.BandwidthEstimator) {
 		go func() {
 			ticker := time.NewTicker(200 * time.Millisecond)
-			for range ticker.C {
+			for now := range ticker.C {
 				target := bwe.GetTargetBitrate()
 				if target < 0 {
 					log.Printf("got negative target bitrate: %v\n", target)
 					continue
 				}
+				stats := bwe.GetStats()
+				fmt.Fprintf(logfile, "%v, %v, %v, %v, %v, %v, %v\n", now.UnixMilli(), target, stats["lossEstimate"], stats["delayEstimate"], stats["estimate"], stats["thresh"], stats["rtt"])
 				encoder.SetTargetBitrate(target)
-				fmt.Printf("new bitrate: %v\n", target)
 			}
 		}()
 	}
