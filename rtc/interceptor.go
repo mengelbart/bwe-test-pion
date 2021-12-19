@@ -33,7 +33,7 @@ func registerRTPSenderDumper(r *interceptor.Registry, rtp, rtcp io.Writer) error
 func registerRTPReceiverDumper(r *interceptor.Registry, rtp, rtcp io.Writer) error {
 	rtcpDumperInterceptor, err := packetdump.NewSenderInterceptor(
 		packetdump.RTCPFormatter(rtcpFormat),
-		packetdump.RTCPWriter(rtp),
+		packetdump.RTCPWriter(rtcp),
 	)
 	if err != nil {
 		return err
@@ -41,7 +41,7 @@ func registerRTPReceiverDumper(r *interceptor.Registry, rtp, rtcp io.Writer) err
 
 	rtpDumperInterceptor, err := packetdump.NewReceiverInterceptor(
 		packetdump.RTPFormatter(rtpFormat),
-		packetdump.RTPWriter(rtcp),
+		packetdump.RTPWriter(rtp),
 	)
 	if err != nil {
 		return err

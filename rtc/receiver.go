@@ -83,7 +83,7 @@ func StartReceiver(answerAddr, offerAddr string) error {
 		return err
 	}
 
-	rtpWriter, err := getLogWriter("log/rtp_int.log")
+	rtpWriter, err := getLogWriter("log/rtp_in.log")
 	if err != nil {
 		return err
 	}
