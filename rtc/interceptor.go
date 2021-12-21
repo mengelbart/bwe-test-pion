@@ -70,7 +70,7 @@ func registerTWCCHeaderExtension(r *interceptor.Registry) error {
 }
 
 func registerGCC(r *interceptor.Registry, cb gcc.NewPeerConnectionCallback) error {
-	gccFactory, err := gcc.NewInterceptor(gcc.InitialBitrate(100_000), gcc.SetPacer(gcc.NewLeakyBucketPacer(100_000)))
+	gccFactory, err := gcc.NewInterceptor(gcc.InitialBitrate(initialTargetBitrate), gcc.SetPacer(gcc.NewLeakyBucketPacer(initialTargetBitrate)))
 	if err != nil {
 		return err
 	}

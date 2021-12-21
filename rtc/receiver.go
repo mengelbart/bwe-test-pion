@@ -32,6 +32,7 @@ func receiverSignalCandidate(addr string, c *webrtc.ICECandidate) error {
 }
 
 func onTrack(trackRemote *webrtc.TrackRemote, rtpReceiver *webrtc.RTPReceiver) {
+	//ts := time.Now()
 	for {
 		if err := rtpReceiver.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
 			fmt.Printf("failed to SetReadDeadline for rtpReceiver: %v\n", err)
@@ -45,6 +46,8 @@ func onTrack(trackRemote *webrtc.TrackRemote, rtpReceiver *webrtc.RTPReceiver) {
 			fmt.Printf("trackRemote.ReadRTP received EOF\n")
 			return
 		}
+		//fmt.Printf("%v\t since last arrival: %v\n", time.Since(ts), p.Header)
+		//ts = time.Now()
 		if err != nil {
 			fmt.Printf("trackRemote.ReadRTP returned error: %v\n", err)
 			return
