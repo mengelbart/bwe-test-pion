@@ -15,7 +15,7 @@ import (
 
 	"github.com/mengelbart/syncodec"
 	"github.com/pion/interceptor"
-	"github.com/pion/interceptor/gcc/pkg/gcc"
+	"github.com/pion/interceptor/pkg/cc"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
 )
@@ -248,8 +248,8 @@ func (w *sampleWriter) WriteFrame(frame syncodec.Frame) {
 	})
 }
 
-func gccLoopFactory(encoder *syncodec.StatisticalCodec, logfile io.Writer) gcc.NewPeerConnectionCallback {
-	return func(_ string, bwe gcc.BandwidthEstimator) {
+func gccLoopFactory(encoder *syncodec.StatisticalCodec, logfile io.Writer) cc.NewPeerConnectionCallback {
+	return func(_ string, bwe cc.BandwidthEstimator) {
 		bwe.OnTargetBitrateChange(func(target int) {
 			if target < 0 {
 				log.Printf("got negative target bitrate: %v\n", target)
