@@ -261,8 +261,8 @@ github.com/mattn/go-isatty v0.0.11/go.mod h1:PhnuNfih5lzO57/f3n+odYbM4JtupLOxQOA
 github.com/mattn/go-isatty v0.0.12/go.mod h1:cbi8OIDigv2wuxKPP5vlRcQ1OAZbq2CE4Kysco4FUpU=
 github.com/mattn/go-isatty v0.0.14/go.mod h1:7GGIvUiUoEMVVmxf/4nioHXj79iQHKdU27kJ6hsGG94=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
-github.com/mengelbart/syncodec v0.0.0-20211121123228-d94cb52b9e9e h1:whVLCvI8ythend7BkFQAtY8NwK7fdaCPoPEjykJdqxM=
-github.com/mengelbart/syncodec v0.0.0-20211121123228-d94cb52b9e9e/go.mod h1:xSNXCRAUe6VZ/3cIYLvelP33gCTh3PLVbckdgcCeV+U=
+github.com/mengelbart/syncodec v0.0.0-20220105132658-94ec57e63a65 h1:YesVi8KQzZ9tFu6p3NTU77xA3/8N2C11IDuk/7sV5uI=
+github.com/mengelbart/syncodec v0.0.0-20220105132658-94ec57e63a65/go.mod h1:xSNXCRAUe6VZ/3cIYLvelP33gCTh3PLVbckdgcCeV+U=
 github.com/miekg/dns v1.0.14/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
 github.com/miekg/dns v1.1.26/go.mod h1:bPDLeHnStXmXAq1m/Ch/hvfNHr14JKNPMBo3VZKjuso=
 github.com/miekg/dns v1.1.41/go.mod h1:p6aan82bvRIyn+zDIv9xYNUpwa73JcSh9BKwknJysuI=
@@ -297,8 +297,8 @@ github.com/pion/dtls/v2 v2.0.10/go.mod h1:00OxfeCRWHShcqT9jx8pKKmBWuTt0NCZoVPCaC
 github.com/pion/ice/v2 v2.1.14 h1:nD9GZs3MiR1/dPa5EiMRMe8hLBG3/qqCdx/hTS2g8VE=
 github.com/pion/ice/v2 v2.1.14/go.mod h1:ovgYHUmwYLlRvcCLI67PnQ5YGe+upXZbGgllBDG/ktU=
 github.com/pion/interceptor v0.1.0/go.mod h1:j5NIl3tJJPB3u8+Z2Xz8MZs/VV6rc+If9mXEKNuFmEM=
-github.com/pion/interceptor v0.1.5-0.20211221165156-0c29364b8842 h1:nuRnQK6lM82XUQdjCgGZuRrOnw5Mhs3smnAk81dwW5g=
-github.com/pion/interceptor v0.1.5-0.20211221165156-0c29364b8842/go.mod h1:Lh3JSl/cbJ2wP8I3ccrjh1K/deRGRn3UlSPuOTiHb6U=
+github.com/pion/interceptor v0.1.5-0.20220105143926-4067bef17709 h1:eSbIRbrM7NPBFigFwmYa6oFS/qEcP0QnnSv8mo40ZpU=
+github.com/pion/interceptor v0.1.5-0.20220105143926-4067bef17709/go.mod h1:Lh3JSl/cbJ2wP8I3ccrjh1K/deRGRn3UlSPuOTiHb6U=
 github.com/pion/logging v0.2.2 h1:M9+AIj/+pxNsDfAT64+MAVgJO0rsyLnoJKCqf//DoeY=
 github.com/pion/logging v0.2.2/go.mod h1:k0/tDVsRCX2Mb2ZEmTqNa7CWsQPc+YYCB7Q+5pahoms=
 github.com/pion/mdns v0.0.5 h1:Q2oj/JB3NqfzY9xGZ1fPzZzK7sDSD8rZPOvcIQ10BCw=

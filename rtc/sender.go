@@ -248,7 +248,7 @@ func (w *sampleWriter) WriteFrame(frame syncodec.Frame) {
 	})
 }
 
-func gccLoopFactory(encoder *syncodec.StatisticalCodec, logfile io.Writer) cc.NewPeerConnectionCallback {
+func gccLoopFactory(encoder syncodec.Codec, logfile io.Writer) cc.NewPeerConnectionCallback {
 	return func(_ string, bwe cc.BandwidthEstimator) {
 		bwe.OnTargetBitrateChange(func(target int) {
 			if target < 0 {
@@ -256,7 +256,7 @@ func gccLoopFactory(encoder *syncodec.StatisticalCodec, logfile io.Writer) cc.Ne
 				return
 			}
 			stats := bwe.GetStats()
-			fmt.Fprintf(logfile, "%v, %v, %v, %v, %v, %v, %v\n", time.Now().UnixMilli(), target, stats["lossEstimate"], stats["delayEstimate"], stats["estimate"], stats["thresh"], stats["rtt"])
+			fmt.Fprintf(logfile, "%v, %v, %v, %v, %v, %v, %v, %v\n", time.Now().UnixMilli(), target, stats["lossEstimate"], stats["delayEstimate"], stats["estimate"], stats["thresh"], stats["state"], stats["rtt"])
 			encoder.SetTargetBitrate(target)
 		})
 	}

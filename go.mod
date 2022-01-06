@@ -3,8 +3,8 @@ module github.com/mengelbart/bwe-test-pion
 go 1.17
 
 require (
-	github.com/mengelbart/syncodec v0.0.0-20211121123228-d94cb52b9e9e
-	github.com/pion/interceptor v0.1.4
+	github.com/mengelbart/syncodec v0.0.0-20220105132658-94ec57e63a65
+	github.com/pion/interceptor v0.1.5-0.20220105143926-4067bef17709
 	github.com/pion/rtcp v1.2.9
 	github.com/pion/rtp v1.7.4
 	github.com/pion/sdp/v2 v2.4.0
@@ -34,7 +34,3 @@ require (
 	golang.org/x/sys v0.0.0-20211205182925-97ca703d548d // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 )
-
-replace github.com/pion/interceptor v0.1.4 => github.com/pion/interceptor v0.1.5-0.20211221165156-0c29364b8842
-
-//replace github.com/pion/interceptor v0.1.4 => ../../pion/interceptor
