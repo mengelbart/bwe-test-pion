@@ -2,6 +2,7 @@ package rtc
 
 import (
 	"io"
+	"time"
 
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/cc"
@@ -53,7 +54,7 @@ func registerRTPReceiverDumper(r *interceptor.Registry, rtp, rtcp io.Writer) err
 }
 
 func registerTWCC(r *interceptor.Registry) error {
-	fbFactory, err := twcc.NewSenderInterceptor()
+	fbFactory, err := twcc.NewSenderInterceptor(twcc.SendInterval(30 * time.Millisecond))
 	if err != nil {
 		return err
 	}
