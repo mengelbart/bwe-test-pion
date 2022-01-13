@@ -20,7 +20,7 @@ import (
 	"github.com/pion/webrtc/v3/pkg/media"
 )
 
-const initialTargetBitrate = 800_000
+const initialTargetBitrate = 700_000
 
 func senderSignalCandidate(addr string, c *webrtc.ICECandidate) error {
 	payload := []byte(c.ToJSON().Candidate)
@@ -256,7 +256,7 @@ func gccLoopFactory(encoder syncodec.Codec, logfile io.Writer) cc.NewPeerConnect
 				return
 			}
 			stats := bwe.GetStats()
-			fmt.Fprintf(logfile, "%v, %v, %v, %v, %v, %v, %v, %v\n", time.Now().UnixMilli(), target, stats["lossEstimate"], stats["delayEstimate"], stats["estimate"], stats["thresh"], stats["state"], stats["rtt"])
+			fmt.Fprintf(logfile, "%v, %v, %v, %v, %v, %v, %v, %v, %v, %v, %v\n", time.Now().UnixMilli(), target, stats["lossTargetBitrate"], stats["averageLoss"], stats["delayTargetBitrate"], stats["delayMeasurement"], stats["delayEstimate"], stats["delayThreshold"], stats["rtt"], stats["usage"], stats["state"])
 			encoder.SetTargetBitrate(target)
 		})
 	}
