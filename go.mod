@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/mengelbart/syncodec v0.0.0-20220105132658-94ec57e63a65
-	github.com/pion/interceptor v0.1.6-0.20220113185545-39cf8cfbd2ed
+	github.com/pion/interceptor v0.1.6-0.20220115193159-21bd73dbab13
 	github.com/pion/rtcp v1.2.9
 	github.com/pion/rtp v1.7.4
 	github.com/pion/sdp/v2 v2.4.0
